@@ -14,6 +14,6 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	log := logger.MustInitLogger(&cfg)
-	Server := server.NewServer(&cfg, log)
-	Server.MustRunWithGracefullShutdown()
+	server := server.NewServer(&cfg, log)
+	server.MustRunWithGracefullShutdown()
 }
