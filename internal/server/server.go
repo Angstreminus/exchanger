@@ -1,11 +1,13 @@
 package server
 
 import (
-	"net"
+	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Angstreminus/exchanger/internal/handler"
 	"github.com/Angstreminus/exchanger/internal/service"
@@ -29,31 +31,32 @@ func NewServer(config *config.Config, log *logger.Logger) *Server {
 
 func (srv *Server) MustRunWithGracefullShutdown() {
 	srv.Router = http.NewServeMux()
-
 	service := service.NewService(srv.Logger)
 	handler := handler.NewHandler(service, srv.Logger)
+	srv.Logger.Zap.Info("ROUNTES INITIALIZED")
 	srv.Router.HandleFunc("POST /exchange", handler.CreateExchange)
-
-	// Create a listener for graceful shutdown.
-	listener, err := net.Listen("tcp", srv.Config.ServerHost+srv.Config.ServerPort)
-	if err != nil {
-		srv.Logger.Zap.Fatal("ERROR TO START SERVER", zapcore.Field{String: err.Error()})
+	fmt.Println()
+	serv := &http.Server{
+		Addr:    srv.Config.ServerHost + srv.Config.ServerPort,
+		Handler: srv.Router,
 	}
 
-	// Run the HTTP server, using the listener we created for graceful shutdown.
 	go func() {
-		if err := http.Serve(listener, srv.Router); err != nil {
-			srv.Logger.Zap.Fatal("ERROR TO START SERVER", zapcore.Field{String: err.Error()})
+		if err := serv.ListenAndServe(); err != nil {
+			srv.Logger.Zap.Error("Error to run server", zapcore.Field{String: err.Error()})
 		}
 	}()
 
-	// Wait for a SIGHUP or SIGINT signal, which will trigger a graceful shutdown.
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGHUP)
-	<-signalChan
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Trigger a graceful shutdown.
-	if err := listener.Close(); err != nil {
-		srv.Logger.Zap.Error("ERROR TO CLOSE SERVER", zapcore.Field{String: err.Error()})
+	if err := serv.Shutdown(ctx); err != nil {
+		srv.Logger.Zap.Error("Error to shutdown server")
+	} else {
+		// here is no connections
+		srv.Logger.Zap.Info("All connections gracefully closed")
 	}
 }

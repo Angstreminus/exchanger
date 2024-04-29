@@ -7,6 +7,7 @@ import (
 	"github.com/Angstreminus/exchanger/internal/apperrors"
 	"github.com/Angstreminus/exchanger/internal/dto"
 	"github.com/Angstreminus/exchanger/pkg/logger"
+	"go.uber.org/zap/zapcore"
 )
 
 type ExchangerService interface {
@@ -30,6 +31,7 @@ func (exH *Handler) CreateExchange(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&exReq)
 	defer r.Body.Close()
 	if err != nil {
+		exH.Logger.Zap.Error("ERROR TO DECODE REQUEST", zapcore.Field{String: err.Error()})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(err.Error())
@@ -37,12 +39,14 @@ func (exH *Handler) CreateExchange(w http.ResponseWriter, r *http.Request) {
 	}
 	exCh, err := exH.Service.CreateExchange(&exReq)
 	if err != nil {
+		exH.Logger.Zap.Error(err.Error())
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(err.Error())
 		return
 	}
 
+	exH.Logger.Zap.Info("EXCHANGE CREATED")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err = json.NewEncoder(w).Encode(exCh); err != nil {

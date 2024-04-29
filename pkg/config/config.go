@@ -28,8 +28,8 @@ func LoadConfig() (Config, error) {
 	once.Do(
 		func() {
 			config = &Config{
-				ServerPort: os.Getenv("SERVER_PORT"),
-				ServerHost: os.Getenv("SERVER_HOST"),
+				ServerPort: os.Getenv("PORT"),
+				ServerHost: os.Getenv("HOST"),
 				LogLevel:   os.Getenv("LOG_LEVEL"),
 			}
 		})
