@@ -26,6 +26,16 @@ type Handler struct {
 	Logger  *logger.Logger
 }
 
+// ShowAccount godoc
+// @Summary      Show an account
+// @Description  create_exchange
+// @Tags         exchanges
+// @Accept       json
+// @Produce      json
+// @Success      201  {object}  dto.Response
+// @Failure      400 {object} httputil.HTTPError
+// @Router       /http://localhost:8080/exchanges [post]
+
 func (exH *Handler) CreateExchange(w http.ResponseWriter, r *http.Request) {
 	var exReq dto.Request
 	err := json.NewDecoder(r.Body).Decode(&exReq)
@@ -45,11 +55,12 @@ func (exH *Handler) CreateExchange(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(err.Error())
 		return
 	}
-
 	exH.Logger.Zap.Info("EXCHANGE CREATED")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if err = json.NewEncoder(w).Encode(exCh); err != nil {
+	if err = json.NewEncoder(w).Encode(&dto.Response{
+		Exchanges: exCh,
+	}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
